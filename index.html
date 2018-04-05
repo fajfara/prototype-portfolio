@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Anze Portfolio</title>
+	<meta name="description" content="Some decorative background scroll effects for websites using WebGL and regl" />
+	<meta name="keywords" content="regl, webgl, background, website, decorative, scroll effect, spiral, distortion " />
+	<meta name="author" content="Codrops" />
+	<link rel="shortcut icon" href="favicon.ico">
+	<link href="https://fonts.googleapis.com/css?family=Roboto+Mono:400,700" rel="stylesheet">
+	<link rel="stylesheet" type="text/css" href="css/normalize.css" />
+	<link rel="stylesheet" type="text/css" href="css/demo.css" />
+	<link rel="stylesheet" href="css/style.css">
+	<script>document.documentElement.className = 'js';</script>
+</head>
+<body class="demo-1 loading">
+	<header id="menu">
+		<a href="#about">Go to about page // </a>
+		<a href="#portfolio">Go to portfolio page // </a>
+		<a href="#contacts">Go to contacts page // </a>
+		<a href="#resources">Go to resources page // </a>
+	</header>
+
+	<div class="content-infront-webgl">
+			<h1>Welcome</h1>
+			<div class="text-inside">This animation can actually make you nauseous after a while. If you don't want it to play in the background, go to the menu and disable the spinning animation</div>
+	</div>
+	<canvas id="webgl"></canvas>
+
+	<main>
+		<section class="content content--main"></section>
+		<section class="content content--related" id="about">
+			<h1>About me</h1>
+			<p>My name is Anze. <br>I am a self taught programmer, currently working in front-end with the end goal of becoming a full stack developer.</p>
+			<h2>My skills:</h2>
+			<p>Stats taken from Codestats</p>
+			<div class="chart">
+				<canvas id="myChart"></canvas>
+			</div>
+		</section>
+		<section class="content content--related" id="portfolio">
+			<h1>Portfolio</h1>
+		</section>
+		<section class="content content--related" id="contacts">
+			<h1>Contacts</h1>
+		</section>
+		<section class="content content--related" id="resources">
+			<h1>This website was possible because of:</h1>
+		</section>
+	</main>
+	<script src="js/regl.min.js"></script>
+	<script type="x-shader/x-fragment" id="fragmentShader">
+	#define TWO_PI 6.2831853072
+	#define PI 3.14159265359
+
+	precision highp float;
+
+	uniform float globaltime;
+	uniform vec2 resolution;
+	uniform float aspect;
+	uniform float scroll;
+	uniform float velocity;
+
+	const float timescale = 0.15;
+	const float displace = 0.03;
+	const float gridSize = 20.0;
+	const int layers = 3;
+	const float detail = 2.0;
+	const float wave = 1.0;
+
+	vec2 rotate(vec2 v, float angle) {
+		float c = cos(angle);
+		float s = sin(angle);
+		return v * mat2(c, -s, s, c);
+	}
+
+	vec3 coordToHex(vec2 coord, float scale, float angle) {
+		vec2 c = rotate(coord, angle);
+		float q = (1.0 / 3.0 * sqrt(3.0) * c.x - 1.0 / 3.0 * c.y) * scale;
+		float r = 2.0 / 3.0 * c.y * scale;
+		return vec3(q, r, -q - r);
+	}
+
+	vec3 hexToCell(vec3 hex, float m) {
+		return fract(hex / m) * 2.0 - 1.0;
+	}
+
+	float absMax(vec3 v) {
+		return max(max(abs(v.x), abs(v.y)), abs(v.z));
+	}
+
+	float nsin(float value) {
+		return sin(value * TWO_PI) * 0.5 + 0.5;
+	}
+
+	float hexToFloat(vec3 hex, float amt) {
+		return mix(absMax(hex), 1.0 - length(hex) / sqrt(3.0), amt);
+	}
+
+	float calc(vec3 hex, float time, float len) {
+		float value = 0.0;
+
+		for (int i = 0; i < layers; i++) {
+			vec3 cell = hexToCell(hex, 1.0 + float(i));
+			value += nsin(
+				hexToFloat(
+					cell,
+					nsin(len * wave + time + float(i) / float(layers))
+				) * detail + nsin(time * 0.5)
+			);
+		}
+
+		return value / float(layers);
+	}
+
+	void main(void) {
+		vec2 tx = (gl_FragCoord.xy / resolution.xy - 0.5) * vec2(aspect, 1.0) * 2.0;
+		float time = globaltime * timescale - scroll;
+		float invScroll = 1.0 - scroll;
+		float rgb[3];
+		float len = 1.0 - length(tx) * 0.3;
+		float zoom = nsin(time * 0.1) + len * velocity * 3.0;
+		float angle = TWO_PI * nsin(time * 0.05) + PI * len * scroll;
+		vec3 hex = coordToHex(tx, gridSize * zoom, angle);
+
+		for (int i = 0; i < 3; i++) {
+			float time2 = time + float(i) * displace * invScroll;
+			rgb[i] = pow(calc(hex, time2, len), 3.0) * (0.2 + 0.8 * sin(PI * len * 0.5));
+		}
+
+		gl_FragColor = vec4(
+			rgb[0] * (1.0 - scroll * 0.2),
+			rgb[1] * invScroll,
+			(rgb[2] + 0.2) * invScroll,
+			1.0
+		);
+	}
+	</script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+	<script src="js/demo1.js"></script>
+	<script src="js/app.js"></script>
+</body>
+</html>
